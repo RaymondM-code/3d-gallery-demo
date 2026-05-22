@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOVA Galleries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#c9a96e;--gold-pale:rgba(201,169,110,0.3);--gold-glow:rgba(201,169,110,0.08);
+  --dark:#050403;--mid:#0e0b08;--text:#f0ece4;--muted:rgba(240,236,228,0.45);--faint:rgba(240,236,228,0.18);
+  --serif:'Cormorant Garamond',Georgia,serif;--sans:'Montserrat',sans-serif;
+}
+html,body{width:100%;height:100%;background:var(--dark);overflow:hidden;font-family:var(--sans);color:var(--text);}
+canvas{position:fixed;inset:0;display:block;width:100%!important;height:100%!important;}
+
+/* CURSOR */
+#cursor{position:fixed;top:0;left:0;pointer-events:none;z-index:999;}
+.c-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);position:absolute;transform:translate(-50%,-50%);transition:width .2s,height .2s;}
+.c-ring{width:30px;height:30px;border-radius:50%;border:1px solid var(--gold-pale);position:absolute;transform:translate(-50%,-50%);transition:all .5s cubic-bezier(.16,1,.3,1);}
+body.hovering .c-dot{width:8px;height:8px;}
+body.hovering .c-ring{width:50px;height:50px;border-color:rgba(201,169,110,0.5);}
+
+/* CURTAIN */
+#curtain{position:fixed;inset:0;z-index:200;background:var(--dark);opacity:0;pointer-events:none;transition:opacity .7s ease;}
+#curtain.on{opacity:1;}
+
+/* LANDING */
+#landing{
+  position:fixed;inset:0;z-index:150;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--dark);transition:opacity 1.8s ease;
+}
+#landing.out{opacity:0;pointer-events:none;}
+.l-eyebrow{
+  font-size:.5rem;letter-spacing:.45em;color:var(--gold);text-transform:uppercase;
+  margin-bottom:1.6rem;opacity:0;animation:riseIn 1s .4s ease forwards;
+}
+.l-title{
+  font-family:var(--serif);font-size:clamp(3rem,7vw,5.5rem);font-weight:300;
+  line-height:1.1;text-align:center;
+  opacity:0;animation:riseIn 1s .7s ease forwards;
+}
+.l-title em{font-style:italic;color:var(--gold);}
+.l-sep{width:1px;height:70px;background:linear-gradient(to bottom,var(--gold),transparent);margin:2.5rem auto;opacity:0;animation:riseIn 1s 1s ease forwards;}
+.l-sub{
+  font-size:.55rem;letter-spacing:.3em;color:var(--muted);
+  text-align:center;max-width:400px;line-height:2;
+  opacity:0;animation:riseIn 1s 1.2s ease forwards;
+}
+.enter-btn{
+  margin-top:3rem;
+  font-size:.5rem;letter-spacing:.35em;text-transform:uppercase;
+  color:var(--text);background:none;border:1px solid var(--gold-pale);
+  padding:1.1rem 3rem;cursor:pointer;
+  transition:all .4s ease;
+  opacity:0;animation:riseIn 1s 1.5s ease forwards;
+}
+.enter-btn:hover{background:var(--gold-glow);border-color:var(--gold);color:var(--gold);}
+
+/* TOP NAV */
+#top-nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  padding:2.2rem 3rem;display:flex;align-items:center;justify-content:space-between;
+  opacity:0;pointer-events:none;transition:opacity 1s ease;
+  background:linear-gradient(to bottom,rgba(5,4,3,.7),transparent);
+}
+#top-nav.on{opacity:1;pointer-events:all;}
+.logo{font-family:var(--serif);font-size:1.5rem;font-weight:300;letter-spacing:.35em;color:var(--text);}
+.logo-accent{color:var(--gold);}
+.nav-links{display:flex;gap:2.5rem;list-style:none;}
+.nav-links a{font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .3s;}
+.nav-links a:hover{color:var(--gold);}
+.menu-btn{font-size:.48rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);background:none;border:none;cursor:pointer;transition:color .3s;}
+.menu-btn:hover{color:var(--gold);}
+
+/* FLOOR BOTTOM BAR */
+#floor-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  padding:0 3rem 2.5rem;display:flex;align-items:flex-end;justify-content:space-between;
+  opacity:0;pointer-events:none;transition:opacity 1s ease;
+  background:linear-gradient(to top,rgba(5,4,3,.65),transparent);
+}
+#floor-bar.on{opacity:1;pointer-events:all;}
+.fl-num{font-family:var(--serif);font-size:4.5rem;font-weight:300;line-height:1;color:var(--gold);transition:all .6s ease;}
+.fl-name{font-size:.45rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-top:.4rem;transition:all .6s ease;}
+.fl-step{
+  position:absolute;left:50%;bottom:3rem;transform:translateX(-50%);
+  text-align:center;cursor:pointer;transition:opacity .4s;
+}
+.fl-step span{display:block;font-family:var(--serif);font-size:.85rem;font-style:italic;color:var(--gold);margin-bottom:.3rem;}
+.fl-step small{font-size:.4rem;letter-spacing:.3em;text-transform:uppercase;color:var(--faint);}
+.fl-arrows{display:flex;align-items:center;gap:1.2rem;}
+.fl-adj{text-align:right;}
+.fl-adj-name{font-size:.42rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:.5rem;}
+.fl-adj-name.left{text-align:left;}
+.arr-btn{
+  width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--gold-pale);background:none;cursor:pointer;
+  transition:all .35s ease;color:var(--text);
+}
+.arr-btn:hover{border-color:var(--gold);background:var(--gold-glow);}
+.arr-btn:disabled{opacity:.15;cursor:default;}
+.arr-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;}
+.change-floor-btn{
+  position:fixed;top:50%;right:3rem;transform:translateY(-50%);
+  font-size:.4rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);background:none;border:none;cursor:pointer;
+  writing-mode:vertical-rl;transition:color .3s;z-index:50;
+  opacity:0;pointer-events:none;transition:opacity 1s,color .3s;
+}
+.change-floor-btn.on{opacity:1;pointer-events:all;}
+.change-floor-btn:hover{color:var(--gold);}
+
+/* WAYPOINT DOTS */
+#wp-dots{
+  position:fixed;bottom:2.5rem;left:50%;transform:translateX(-50%);
+  display:flex;gap:7px;z-index:50;
+  opacity:0;pointer-events:none;transition:opacity .8s ease;
+}
+#wp-dots.on{opacity:1;}
+.wdot{
+  width:4px;height:4px;border-radius:50%;
+  background:var(--gold-pale);cursor:pointer;transition:all .4s;
+}
+.wdot.active{width:18px;border-radius:2px;background:var(--gold);}
+
+/* FLOOR SELECTOR PANEL */
+#floor-panel{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(5,4,3,.95);
+  opacity:0;pointer-events:none;transition:opacity .5s ease;
+}
+#floor-panel.open{opacity:1;pointer-events:all;}
+.fp-header{
+  font-size:.45rem;letter-spacing:.4em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:3.5rem;
+}
+.fp-grid{display:flex;gap:1.5rem;}
+.fp-card{
+  width:190px;padding:2.2rem 1.8rem;
+  border:1px solid rgba(201,169,110,.15);
+  background:none;cursor:pointer;text-align:center;
+  transition:all .4s ease;color:var(--text);
+}
+.fp-card:hover,.fp-card.active{border-color:var(--gold);background:var(--gold-glow);}
+.fp-n{font-family:var(--serif);font-size:2.8rem;font-weight:300;color:var(--gold);display:block;margin-bottom:.5rem;}
+.fp-nm{font-size:.42rem;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:1rem;}
+.fp-desc{font-family:var(--serif);font-size:.85rem;font-style:italic;color:rgba(240,236,228,.5);}
+.fp-close{
+  position:absolute;top:2.5rem;right:3rem;
+  font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;
+  color:var(--muted);background:none;border:none;cursor:pointer;
+  transition:color .3s;
+}
+.fp-close:hover{color:var(--text);}
+
+/* INFO PANEL */
+#info-panel{
+  position:fixed;right:0;top:0;bottom:0;z-index:80;
+  width:min(400px,90vw);background:rgba(8,6,4,.96);
+  backdrop-filter:blur(10px);
+  border-left:1px solid rgba(201,169,110,.15);
+  padding:3rem 2.5rem;overflow-y:auto;
+  transform:translateX(100%);transition:transform .6s cubic-bezier(.16,1,.3,1);
+}
+#info-panel.open{transform:translateX(0);}
+.ip-close{
+  position:absolute;top:2rem;right:2rem;
+  font-size:.45rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);background:none;border:none;cursor:pointer;
+  transition:color .3s;
+}
+.ip-close:hover{color:var(--gold);}
+.ip-tag{font-size:.4rem;letter-spacing:.35em;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem;display:block;}
+.ip-title{font-family:var(--serif);font-size:2rem;font-weight:300;line-height:1.2;margin-bottom:1.5rem;}
+.ip-title em{font-style:italic;color:var(--gold);}
+.ip-body{font-size:.72rem;color:var(--muted);line-height:2;margin-bottom:2rem;}
+.ip-sep{width:40px;height:1px;background:var(--gold-pale);margin-bottom:2rem;}
+.ip-detail{display:flex;flex-direction:column;gap:1rem;}
+.ip-row{display:flex;justify-content:space-between;padding-bottom:.8rem;border-bottom:1px solid var(--faint);}
+.ip-row-k{font-size:.42rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);}
+.ip-row-v{font-size:.65rem;color:var(--muted);}
+
+/* MATERIAL SWATCHER */
+#mat-bar{
+  position:fixed;left:3rem;top:50%;transform:translateY(-50%);
+  z-index:50;display:flex;flex-direction:column;align-items:center;gap:10px;
+  opacity:0;pointer-events:none;transition:opacity 1s;
+}
+#mat-bar.on{opacity:1;pointer-events:all;}
+.mat-lbl{font-size:.38rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);writing-mode:vertical-rl;transform:rotate(180deg);margin-bottom:8px;}
+.mat-sw{width:18px;height:18px;border-radius:50%;border:1px solid transparent;cursor:pointer;transition:all .35s;}
+.mat-sw.active,.mat-sw:hover{border-color:var(--gold);transform:scale(1.4);}
+
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div id="cursor"><div class="c-dot"></div><div class="c-ring"></div></div>
+<div id="curtain"></div>
+<canvas id="c"></canvas>
+
+<!-- LANDING -->
+<div id="landing">
+  <p class="l-eyebrow">Welcome to our</p>
+  <h1 class="l-title">Nova <em>Galleries</em></h1>
+  <div class="l-sep"></div>
+  <p class="l-sub">An immersive phygital experience where design takes shape,&nbsp;colour and depth.</p>
+  <button class="enter-btn" id="enter-btn">Step Inside</button>
+</div>
+
+<!-- NAV -->
+<nav id="top-nav">
+  <div class="logo">NO<span class="logo-accent">V</span>A</div>
+  <ul class="nav-links">
+    <li><a href="#">Galleries</a></li>
+    <li><a href="#">Floors</a></li>
+    <li><a href="#">Events</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+  <button class="menu-btn" id="chg-btn">Change floor</button>
+</nav>
+
+<!-- FLOOR BAR -->
+<div id="floor-bar">
+  <div>
+    <div class="fl-num" id="fl-num">01</div>
+    <div class="fl-name" id="fl-name">Ground Floor</div>
+  </div>
+  <div class="fl-step" id="step-inside">
+    <span>Step Inside</span>
+    <small>Explore this level</small>
+  </div>
+  <div class="fl-arrows">
+    <div class="fl-adj"><span class="fl-adj-name left" id="prev-name">—</span></div>
+    <button class="arr-btn" id="prev-btn" disabled>
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="arr-btn" id="next-btn">
+      <svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+    </button>
+    <div class="fl-adj"><span class="fl-adj-name" id="next-name">First Floor</span></div>
+  </div>
+</div>
+
+<!-- WAYPOINT DOTS -->
+<div id="wp-dots">
+  <div class="wdot active" data-i="0"></div>
+  <div class="wdot" data-i="1"></div>
+  <div class="wdot" data-i="2"></div>
+  <div class="wdot" data-i="3"></div>
+</div>
+
+<!-- MAT BAR -->
+<div id="mat-bar">
+  <span class="mat-lbl">Surface</span>
+  <div class="mat-sw active" style="background:#d4c4a8" data-m="0"></div>
+  <div class="mat-sw" style="background:#7a8c96" data-m="1"></div>
+  <div class="mat-sw" style="background:#6b4c3b" data-m="2"></div>
+  <div class="mat-sw" style="background:#2a2a2a" data-m="3"></div>
+</div>
+
+<!-- FLOOR PANEL -->
+<div id="floor-panel">
+  <button class="fp-close" id="fp-close">Close &nbsp;✕</button>
+  <p class="fp-header">Select a floor</p>
+  <div class="fp-grid" id="fp-grid"></div>
+</div>
+
+<!-- INFO PANEL -->
+<div id="info-panel">
+  <button class="ip-close" id="ip-close">Close ✕</button>
+  <div id="ip-content"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+// ── RENDERER ──────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.05, 300);
+
+function onResize(){
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+}
+onResize(); addEventListener('resize', onResize);
+
+// ── FLOOR DATA ─────────────────────────────────────────────────────────────────
+const FLOORS = [
+  {
+    id:0, num:'00', name:'Underground', adj:'—',
+    fog:0x020103, fogD:0.032,
+    ambient:[0x040205,0.4], lights:[{c:0x9060c0,i:2.5,y:5},{c:0x5030a0,i:1,y:0.5}],
+    floorCol:0x1a1520, wallCol:0x0d0a10, colCol:0x2a2035,
+    waypoints:[
+      {p:[0,2,10],   l:[0,1.8,0]},
+      {p:[-5,1.8,2], l:[5,2.5,-6]},
+      {p:[0,2,-3],   l:[0,2,-16]},
+      {p:[6,2.5,4],  l:[-4,2,-8]},
+    ],
+    hotspots:[
+      {p:[-6,2.5,-5],  title:'Primordial Stone', tag:'Underground / Installation 01',
+        body:'Carved from the earth itself. A meditation on geological time and the raw beauty of stone before human intervention.',
+        details:[['Material','Basalt composite'],['Dimensions','240 × 140 cm'],['Year','2024']]},
+      {p:[6,2.5,-8],   title:'Void Series', tag:'Underground / Installation 02',
+        body:'Darkness as a design element. The Void Series explores negative space as primary material, questioning presence and absence.',
+        details:[['Medium','Black ceramic slab'],['Edition','1 of 3'],['Status','On display']]},
+    ]
+  },
+  {
+    id:1, num:'01', name:'Ground Floor', adj:'Underground',
+    fog:0x060402, fogD:0.022,
+    ambient:[0x0c0804,0.5], lights:[{c:0xffc060,i:3,y:6},{c:0xffe090,i:1.2,y:0.3}],
+    floorCol:0xd4c4a8, wallCol:0xf0e8d8, colCol:0xc8b890,
+    waypoints:[
+      {p:[0,2.5,12],  l:[0,2.2,0]},
+      {p:[-6,2.2,4],  l:[4,2.8,-4]},
+      {p:[0,2.5,-2],  l:[0,2.2,-14]},
+      {p:[7,2.5,2],   l:[-5,2,-10]},
+    ],
+    hotspots:[
+      {p:[-8.5,3,-4],  title:'Alchimia', tag:'Ground Floor / Technology',
+        body:'An ancient art of transformation. Ceramic surfaces seamlessly integrate hidden screens and audio-video systems that appear and vanish on command — technology rendered invisible by design.',
+        details:[['Technology','Integrated ceramic display'],['Partner','VBH'],['Year','2025']]},
+      {p:[8.5,3,-8],   title:'Active Surfaces', tag:'Ground Floor / Innovation',
+        body:'Design for a better life. Photo-catalytic properties transform ceramic slabs into eco-active materials with antibacterial, anti-pollution and self-cleaning properties.',
+        details:[['Origin','100% Italian'],['Research','Univ. of Milan'],['Property','Iris Ceramica Group']]},
+    ]
+  },
+  {
+    id:2, num:'02', name:'First Floor', adj:'Ground Floor',
+    fog:0x030507, fogD:0.02,
+    ambient:[0x050810,0.5], lights:[{c:0xd0e8ff,i:2.5,y:6},{c:0x8098c8,i:0.8,y:0.2}],
+    floorCol:0x8a9ba8, wallCol:0xdde4ea, colCol:0x9aabb8,
+    waypoints:[
+      {p:[0,2.5,10],  l:[0,2.2,0]},
+      {p:[-5,2,3],    l:[5,2.5,-5]},
+      {p:[0,3,-1],    l:[0,2,-14]},
+      {p:[6,2,4],     l:[-4,2.2,-8]},
+    ],
+    hotspots:[
+      {p:[-8.5,3,-3],  title:'Attract', tag:'First Floor / System',
+        body:'Smart living goes magnetic. An innovative dry magnetic laying system for ceramic slabs — modular, adhesive-free and fully circular. The future of sustainable installation.',
+        details:[['System','Magnetic dry-lay'],['Model','Circular economy'],['Coverage','Horizontal & vertical']]},
+      {p:[8.5,3,-7],   title:'DYS', tag:'First Floor / Customisation',
+        body:'Beauty and Art. Design Your Slabs — limitless customisation technology that prints any image onto ceramic surfaces at the finest resolution. The surface becomes a canvas.',
+        details:[['Resolution','Ultra high definition'],['Support','Any ceramic format'],['Bespoke','Yes, on request']]},
+    ]
+  },
+  {
+    id:3, num:'03', name:'Pop-Up Window', adj:'First Floor',
+    fog:0x060606, fogD:0.02,
+    ambient:[0x0a0a0a,0.6], lights:[{c:0xfff5e8,i:2.8,y:5.5},{c:0xffe8b0,i:0.9,y:0.2}],
+    floorCol:0xe0dbd2, wallCol:0xf5f2ee, colCol:0xc8c0b0,
+    waypoints:[
+      {p:[0,2.5,10],  l:[0,2.2,0]},
+      {p:[-4,2,3],    l:[4,2.5,-4]},
+      {p:[0,2.5,-2],  l:[0,2,-12]},
+      {p:[4,2,3],     l:[-4,2,-8]},
+    ],
+    hotspots:[
+      {p:[-7,3,-2],    title:'Seasonal Edit', tag:'Pop-Up / Curated Collection',
+        body:'A rotating curated selection of Iris Ceramica Group\'s most iconic surfaces, presented in dialogue with contemporary furniture and spatial design.',
+        details:[['Rotation','Quarterly'],['Format','Limited display'],['Themes','Seasonal collection']]},
+      {p:[7,3,-5],     title:'Collaborations', tag:'Pop-Up / Partnerships',
+        body:'The Pop-Up Window hosts exclusive collaborations with leading architects and designers, pushing the boundaries of ceramic application in living spaces.',
+        details:[['Partners','International designers'],['Format','Temporary exhibition'],['Duration','3–6 months']]},
+    ]
+  },
+];
+
+// ── MATERIAL PALETTES ─────────────────────────────────────────────────────────
+const MAT_PALETTES = [
+  {floor:0xd4c4a8, wall:0xf0e8d8},
+  {floor:0x7a8c96, wall:0xdde4ea},
+  {floor:0x6b4c3b, wall:0x8c7060},
+  {floor:0x252525, wall:0x303030},
+];
+let activeMat = 1; // starts at floor 1 (Ground)
+
+// ── SCENE OBJECTS ─────────────────────────────────────────────────────────────
+const floorGroups = [];
+const floorMats   = [];  // {floor, wall} per floor
+const hotspotMeshes = [];
+
+function buildRoom(fd){
+  const g = new THREE.Group();
+  const W=20,H=6.5,D=36;
+  const fmat = new THREE.MeshStandardMaterial({color:fd.floorCol, roughness:0.25, metalness:0.55});
+  const wmat = new THREE.MeshStandardMaterial({color:fd.wallCol,  roughness:0.88, metalness:0.0});
+  const cmat = new THREE.MeshStandardMaterial({color:fd.colCol,   roughness:0.35, metalness:0.4});
+
+  floorMats.push({fmat, wmat});
+
+  // Floor
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W,D,1,1), fmat);
+  floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.add(floor);
+
+  // Ceiling
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W,D), wmat);
+  ceil.rotation.x=Math.PI/2; ceil.position.y=H; g.add(ceil);
+
+  // Back wall
+  const bwall = new THREE.Mesh(new THREE.PlaneGeometry(W,H), wmat);
+  bwall.position.set(0,H/2,-D/2); bwall.receiveShadow=true; g.add(bwall);
+
+  // Front wall (behind camera entrance, faint)
+  const fwall = new THREE.Mesh(new THREE.PlaneGeometry(W,H), wmat);
+  fwall.position.set(0,H/2,D/2); fwall.rotation.y=Math.PI; g.add(fwall);
+
+  // Side walls
+  [-W/2, W/2].forEach((x,i)=>{
+    const sw = new THREE.Mesh(new THREE.PlaneGeometry(D,H), wmat);
+    sw.position.set(x,H/2,0); sw.rotation.y = i===0? Math.PI/2 : -Math.PI/2;
+    sw.receiveShadow=true; g.add(sw);
+  });
+
+  // Columns — 3 pairs along length
+  const colZ = [-10,-0,10];
+  colZ.forEach(z=>{
+    [-W/2+0.9, W/2-0.9].forEach(x=>{
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.25,H,20), cmat);
+      col.position.set(x,H/2,z); col.castShadow=col.receiveShadow=true; g.add(col);
+      // Base
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.12,0.7),cmat);
+      base.position.set(x,0.06,z); g.add(base);
+      // Capital
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.12,0.55),cmat);
+      cap.position.set(x,H-0.06,z); g.add(cap);
+    });
+  });
+
+  // Arch at back
+  const archMat = new THREE.MeshStandardMaterial({color:fd.colCol,roughness:.4,metalness:.3});
+  // arch sides
+  [[-(W/2-2.8),H/2,-D/2+0.05],[W/2-2.8,H/2,-D/2+0.05]].forEach(([ax,ay,az])=>{
+    const ap = new THREE.Mesh(new THREE.BoxGeometry(0.6,H,0.15),archMat);
+    ap.position.set(ax,ay,az); g.add(ap);
+  });
+  const aTop = new THREE.Mesh(new THREE.BoxGeometry(W-5.6,0.45,0.15),archMat);
+  aTop.position.set(0,H-0.22,-D/2+0.05); g.add(aTop);
+
+  // Wall display panels (backlit)
+  const panelColors = [0x1a3050,0x2a1a10,0x0a2a20,0x1a0a28];
+  const panelEM     = [0x0a1828,0x180e06,0x051510,0x0d0514];
+  for(let i=0;i<3;i++){
+    const pz = -12 + i*10;
+    [-W/2+0.06, W/2-0.06].forEach((px,si)=>{
+      const pmat = new THREE.MeshStandardMaterial({
+        color:panelColors[(i+si)%4],
+        emissive:new THREE.Color(panelEM[(i+si)%4]),
+        emissiveIntensity:1.2,
+        roughness:.7,
+      });
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.2),pmat);
+      panel.position.set(px,3,pz);
+      panel.rotation.y = si===0 ? Math.PI/2 : -Math.PI/2;
+      g.add(panel);
+      // Frame
+      const frmat = new THREE.MeshStandardMaterial({color:fd.colCol,metalness:.5,roughness:.3});
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(3.45,2.45,0.04),frmat);
+      frame.position.copy(panel.position);
+      frame.rotation.copy(panel.rotation);
+      frame.position.x += si===0 ? -0.02 : 0.02;
+      g.add(frame);
+    });
+  }
+
+  // Pedestals + objects
+  const pedPositions=[[0,0,0],[-3,0,-8],[3,0,-8],[0,0,-16]];
+  const objShapes=[
+    new THREE.SphereGeometry(0.22,24,24),
+    new THREE.ConeGeometry(0.18,0.5,8),
+    new THREE.TorusGeometry(0.17,0.065,14,28),
+    new THREE.OctahedronGeometry(0.2,0),
+  ];
+  pedPositions.forEach(([px,py,pz],i)=>{
+    const ped = new THREE.Mesh(
+      new THREE.BoxGeometry(0.65,0.9,0.65),
+      new THREE.MeshStandardMaterial({color:fd.wallCol,roughness:.45,metalness:.1})
+    );
+    ped.position.set(px,0.45,pz); ped.castShadow=ped.receiveShadow=true; g.add(ped);
+    const obj = new THREE.Mesh(
+      objShapes[i%objShapes.length],
+      new THREE.MeshStandardMaterial({color:fd.colCol,metalness:.65,roughness:.15})
+    );
+    obj.position.set(px,1.15+(i===2?0.08:0),pz); obj.castShadow=true; g.add(obj);
+  });
+
+  // Ceiling light canisters + point lights
+  const lzs=[-12,-4,4,12];
+  lzs.forEach(lz=>{
+    const can = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09,0.09,0.3,12),
+      new THREE.MeshStandardMaterial({color:0x111010,roughness:.3,metalness:.7})
+    );
+    can.position.set(0,H-0.15,lz); g.add(can);
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05,8,8),
+      new THREE.MeshBasicMaterial({color:0xfffde4})
+    );
+    bulb.position.set(0,H-0.18,lz); g.add(bulb);
+    const pl = new THREE.PointLight(fd.lights[0].c, fd.lights[0].i*0.5, 16);
+    pl.position.set(0,H-0.25,lz); pl.castShadow=false; g.add(pl);
+  });
+
+  // Particles
+  const pc=500, ppos=new Float32Array(pc*3);
+  for(let i=0;i<pc;i++){
+    ppos[i*3]   =(Math.random()-.5)*W*.8;
+    ppos[i*3+1] = Math.random()*H;
+    ppos[i*3+2] =(Math.random()-.5)*D;
+  }
+  const pgeo=new THREE.BufferGeometry();
+  pgeo.setAttribute('position',new THREE.BufferAttribute(ppos,3));
+  const pts=new THREE.Points(pgeo,new THREE.PointsMaterial({color:0xffd080,size:.025,transparent:true,opacity:.5,sizeAttenuation:true}));
+  g.add(pts);
+  g._particles = pgeo;
+
+  // Hotspot spheres
+  fd.hotspots.forEach((hs,hi)=>{
+    const hmat=new THREE.MeshBasicMaterial({color:0xc9a96e,transparent:true,opacity:.85});
+    const hm=new THREE.Mesh(new THREE.SphereGeometry(0.08,16,16),hmat);
+    hm.position.set(...hs.p);
+    g.add(hm);
+    // Glow ring
+    const ring=new THREE.Mesh(
+      new THREE.TorusGeometry(0.16,0.01,8,24),
+      new THREE.MeshBasicMaterial({color:0xc9a96e,transparent:true,opacity:.4})
+    );
+    ring.position.copy(hm.position);
+    g.add(ring);
+    hotspotMeshes.push({mesh:hm,ring,data:hs,floorId:fd.id});
+  });
+
+  return g;
+}
+
+// Build all floors
+FLOORS.forEach((fd,i)=>{
+  const g = buildRoom(fd);
+  g.visible=(i===1);
+  scene.add(g);
+  floorGroups.push(g);
+});
+
+// ── LIGHTING ──────────────────────────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0x0c0804, 0.5);
+scene.add(ambient);
+const mainLight = new THREE.PointLight(0xffc060, 3, 45);
+mainLight.position.set(0,5.8,0);
+mainLight.castShadow=true;
+scene.add(mainLight);
+const fillLight = new THREE.PointLight(0xffe090, 1, 50);
+fillLight.position.set(0,5,0);
+scene.add(fillLight);
+
+// ── CAMERA TOUR SYSTEM ────────────────────────────────────────────────────────
+let currentFloor=1, activeWP=0, wpTimer=0;
+const WP_HOLD=5, WP_TRANS=2.5;
+let camPos=new THREE.Vector3(0,2.5,12), camLook=new THREE.Vector3(0,2.2,0);
+let tgtPos=new THREE.Vector3(0,2.5,12), tgtLook=new THREE.Vector3(0,2.2,0);
+let mx=0,my=0, touring=false;
+
+function setWP(i){
+  const wps=FLOORS[currentFloor].waypoints;
+  activeWP=i%wps.length;
+  const w=wps[activeWP];
+  tgtPos.set(...w.p);
+  tgtLook.set(...w.l);
+  wpTimer=0;
+  document.querySelectorAll('.wdot').forEach((d,di)=>d.classList.toggle('active',di===activeWP));
+}
+
+function applyFloorAtmosphere(fd){
+  scene.fog=new THREE.FogExp2(fd.fog, fd.fogD);
+  scene.background=new THREE.Color(fd.fog);
+  ambient.color.setHex(fd.ambient[0]);
+  ambient.intensity=fd.ambient[1];
+  mainLight.color.setHex(fd.lights[0].c);
+  mainLight.intensity=fd.lights[0].i;
+  fillLight.color.setHex(fd.lights[1].c);
+  fillLight.intensity=fd.lights[1].i;
+  fillLight.position.y=fd.lights[1].y+4.5;
+}
+
+// ── FLOOR CHANGE ─────────────────────────────────────────────────────────────
+let isTransitioning=false;
+function switchFloor(newIdx){
+  if(isTransitioning||newIdx===currentFloor) return;
+  isTransitioning=true;
+  document.getElementById('curtain').classList.add('on');
+  setTimeout(()=>{
+    floorGroups[currentFloor].visible=false;
+    currentFloor=newIdx;
+    floorGroups[currentFloor].visible=true;
+    applyFloorAtmosphere(FLOORS[currentFloor]);
+    activeWP=0;
+    const w=FLOORS[currentFloor].waypoints[0];
+    camPos.set(...w.p); tgtPos.set(...w.p);
+    camLook.set(...w.l); tgtLook.set(...w.l);
+    camera.position.copy(camPos); camera.lookAt(camLook);
+    updateFloorUI();
+    document.getElementById('curtain').classList.remove('on');
+    setTimeout(()=>{ isTransitioning=false; },700);
+  },700);
+}
+
+function updateFloorUI(){
+  const fd=FLOORS[currentFloor];
+  document.getElementById('fl-num').textContent=fd.num;
+  document.getElementById('fl-name').textContent=fd.name;
+  const prev=FLOORS[currentFloor-1];
+  const next=FLOORS[currentFloor+1];
+  document.getElementById('prev-name').textContent=prev?prev.name:'—';
+  document.getElementById('next-name').textContent=next?next.name:'—';
+  document.getElementById('prev-btn').disabled=!prev;
+  document.getElementById('next-btn').disabled=!next;
+  document.querySelectorAll('.fp-card').forEach(c=>c.classList.toggle('active',+c.dataset.f===currentFloor));
+  // mat
+  applyMat(activeMat);
+}
+
+// ── MATERIAL SWAP ─────────────────────────────────────────────────────────────
+function applyMat(idx){
+  activeMat=idx;
+  const p=MAT_PALETTES[idx];
+  floorMats.forEach(({fmat,wmat})=>{
+    fmat.color.setHex(p.floor);
+    wmat.color.setHex(p.wall);
+  });
+}
+
+// ── BUILD FLOOR PANEL ─────────────────────────────────────────────────────────
+const fpGrid=document.getElementById('fp-grid');
+FLOORS.forEach(fd=>{
+  const btn=document.createElement('button');
+  btn.className='fp-card'+(fd.id===1?' active':'');
+  btn.dataset.f=fd.id;
+  btn.innerHTML=`<span class="fp-n">${fd.num}</span><span class="fp-nm">${fd.name}</span><span class="fp-desc">${fd.id===0?'Raw &amp; dramatic':fd.id===1?'Grand entrance':fd.id===2?'Contemporary':' Seasonal edit'}</span>`;
+  btn.addEventListener('click',()=>{ switchFloor(fd.id); document.getElementById('floor-panel').classList.remove('open'); updateFloorUI(); });
+  fpGrid.appendChild(btn);
+});
+
+// ── EVENTS ────────────────────────────────────────────────────────────────────
+document.getElementById('enter-btn').addEventListener('click',()=>{
+  document.getElementById('landing').classList.add('out');
+  touring=true;
+  setTimeout(()=>{
+    document.getElementById('top-nav').classList.add('on');
+    document.getElementById('floor-bar').classList.add('on');
+    document.getElementById('wp-dots').classList.add('on');
+    document.getElementById('mat-bar').classList.add('on');
+    document.querySelector('.change-floor-btn')||
+    document.getElementById('chg-btn');
+  },1200);
+  applyFloorAtmosphere(FLOORS[currentFloor]);
+  setWP(0); updateFloorUI();
+});
+
+document.getElementById('prev-btn').addEventListener('click',()=>{ if(currentFloor>0) switchFloor(currentFloor-1); });
+document.getElementById('next-btn').addEventListener('click',()=>{ if(currentFloor<FLOORS.length-1) switchFloor(currentFloor+1); });
+document.getElementById('chg-btn').addEventListener('click',()=>document.getElementById('floor-panel').classList.add('open'));
+document.getElementById('fp-close').addEventListener('click',()=>document.getElementById('floor-panel').classList.remove('open'));
+document.getElementById('ip-close').addEventListener('click',()=>document.getElementById('info-panel').classList.remove('open'));
+
+document.querySelectorAll('.wdot').forEach(d=>{
+  d.addEventListener('click',()=>setWP(+d.dataset.i));
+});
+document.querySelectorAll('.mat-sw').forEach(sw=>{
+  sw.addEventListener('click',()=>{
+    document.querySelectorAll('.mat-sw').forEach(s=>s.classList.remove('active'));
+    sw.classList.add('active');
+    applyMat(+sw.dataset.m);
+  });
+});
+
+// Scroll / touch floor change
+let scrollAcc=0;
+addEventListener('wheel',e=>{
+  if(!touring||isTransitioning) return;
+  scrollAcc+=e.deltaY;
+  if(scrollAcc>300){scrollAcc=0;if(currentFloor<FLOORS.length-1){switchFloor(currentFloor+1);updateFloorUI();}}
+  if(scrollAcc<-300){scrollAcc=0;if(currentFloor>0){switchFloor(currentFloor-1);updateFloorUI();}}
+});
+
+// Hotspot raycasting
+const raycaster=new THREE.Raycaster();
+const mouse2D=new THREE.Vector2();
+addEventListener('click',e=>{
+  if(!touring) return;
+  mouse2D.x=(e.clientX/innerWidth)*2-1;
+  mouse2D.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse2D,camera);
+  const targets=hotspotMeshes.filter(h=>h.floorId===currentFloor).map(h=>h.mesh);
+  const hits=raycaster.intersectObjects(targets);
+  if(hits.length){
+    const hd=hotspotMeshes.find(h=>h.mesh===hits[0].object);
+    if(hd) openInfo(hd.data);
+    return;
+  }
+  // Close panel if clicking canvas
+  document.getElementById('info-panel').classList.remove('open');
+});
+
+function openInfo(data){
+  document.getElementById('ip-content').innerHTML=`
+    <span class="ip-tag">${data.tag}</span>
+    <h2 class="ip-title">${data.title}</h2>
+    <div class="ip-sep"></div>
+    <p class="ip-body">${data.body}</p>
+    <div class="ip-detail">
+      ${data.details.map(([k,v])=>`<div class="ip-row"><span class="ip-row-k">${k}</span><span class="ip-row-v">${v}</span></div>`).join('')}
+    </div>`;
+  document.getElementById('info-panel').classList.add('open');
+}
+
+// Mouse parallax + cursor
+const cursorEl=document.getElementById('cursor');
+const cDot=cursorEl.querySelector('.c-dot');
+const cRing=cursorEl.querySelector('.c-ring');
+let cx=0,cy=0, crx=0,cry=0;
+addEventListener('mousemove',e=>{
+  cx=e.clientX; cy=e.clientY;
+  mx=(e.clientX/innerWidth-.5)*2;
+  my=(e.clientY/innerHeight-.5)*2;
+  // hover detect
+  const el=document.elementFromPoint(cx,cy);
+  const isHot=el&&(el.closest('button')||el.closest('a')||el.closest('.mat-sw')||el.closest('.wdot')||el.closest('.fp-card'));
+  document.body.classList.toggle('hovering',!!isHot);
+});
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+const clock=new THREE.Clock();
+let elapsed=0;
+
+function lerp3(v,t,f,dt){ v.x+=(t.x-v.x)*f*dt; v.y+=(t.y-v.y)*f*dt; v.z+=(t.z-v.z)*f*dt; }
+
+// ── ANIMATE ───────────────────────────────────────────────────────────────────
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  elapsed+=dt;
+
+  if(touring){
+    // Waypoint advance
+    wpTimer+=dt;
+    if(wpTimer>WP_HOLD+WP_TRANS){ setWP((activeWP+1)%FLOORS[currentFloor].waypoints.length); }
+
+    // Camera lerp
+    const camSpeed=0.9*dt;
+    const lookSpeed=1.1*dt;
+    lerp3(camPos, tgtPos, camSpeed, 60);
+    lerp3(camLook, tgtLook, lookSpeed, 60);
+    camera.position.set(
+      camPos.x + mx*0.5,
+      camPos.y - my*0.25,
+      camPos.z
+    );
+    camera.lookAt(camLook.x+mx*0.7, camLook.y-my*0.3, camLook.z);
+
+    // Hotspot animation
+    hotspotMeshes.forEach((h,i)=>{
+      if(h.floorId===currentFloor){
+        h.mesh.position.y=h.data.p[1]+Math.sin(elapsed*1.5+i)*0.08;
+        h.ring.position.y=h.mesh.position.y;
+        h.ring.rotation.z=elapsed*0.8;
+        h.mesh.material.opacity=0.7+Math.sin(elapsed*2+i)*0.15;
+      }
+    });
+
+    // Particle drift
+    const g=floorGroups[currentFloor];
+    if(g._particles){
+      const pa=g._particles.attributes.position.array;
+      for(let i=0;i<pa.length;i+=3){ pa[i+1]+=0.003; if(pa[i+1]>6.5) pa[i+1]=0; }
+      g._particles.attributes.position.needsUpdate=true;
+    }
+
+    // Main light subtle pulse
+    mainLight.intensity=FLOORS[currentFloor].lights[0].i+Math.sin(elapsed*.6)*.08;
+  }
+
+  // Cursor smooth follow
+  crx+=(cx-crx)*0.12; cry+=(cy-cry)*0.12;
+  cDot.style.left=cx+'px'; cDot.style.top=cy+'px';
+  cRing.style.left=crx+'px'; cRing.style.top=cry+'px';
+
+  renderer.render(scene, camera);
+}
+
+// Init atmosphere silently for landing
+scene.fog=new THREE.FogExp2(0x050403, 0.025);
+scene.background=new THREE.Color(0x050403);
+camera.position.set(0,2.5,14);
+camera.lookAt(0,2.2,0);
+
+animate();
+})();
+</script>
+</body>
+</html>
